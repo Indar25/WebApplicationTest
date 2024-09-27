@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: WebApp_UserManagement/Dockerfile
+    ports:
+      - "7070:8080"
+    depends_on:
+      - postgresdb
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__PostgresConnection=Host=postgresdb;Port=5432;Database=usermanagement;Username=testuser;Password=password@123
+  
+  postgresdb:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: "password@123"
+      POSTGRES_DB: usermanagement
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data  # Persistent data storage
+  
+  # Migrations service - run this manually when needed
+  migrations:
+    build:
+      context: .
+      dockerfile: WebApp_UserManagement/Dockerfile
+      target: build  # Make sure this target exists in your Dockerfile to run migrations
+    depends_on:
+      - postgresdb
+    volumes:
+      - .:/src  # Mount the local source code to the container
+    working_dir: /src/WebApp_UserManagement  # Work from the WebApp_UserManagement directory
+    entrypoint: ["dotnet", "ef", "database", "update", "--project", "../UserManagement.Repository.Implementation/UserManagement.Repository.csproj", "--startup-project", "./Web.csproj"]
+    environment:
+      - ConnectionStrings__PostgresConnection=Host=postgresdb;Port=5432;Database=usermanagement;Username=testuser;Password=password@123
+
+volumes:
+  postgres-data:
